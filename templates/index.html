@@ -116,12 +116,13 @@
 
     <script>
       function reload() {
-        getMessages().then((messages) => {
+        getMessages().then((data) => {
           const chat = document.getElementById("live-chat");
           chat.classList.forEach((className) => {
             chat.classList.remove(className);
           });
           const msgs = document.createElement("div");
+          const messages = data.messages;
           if (messages.length > 0) {
             for (let i = messages.length - 1; i >= 0; i--) {
               const message = messages[i];
@@ -139,13 +140,9 @@
             chat.classList.add("no-msgs-wrapper");
             chat.appendChild(no_msgs);
           }
-        });
 
-        fetch("/clients")
-          .then((data) => data.json())
-          .then((clients) => {
-            document.getElementById("users-num").innerHTML = clients;
-          });
+          document.getElementById("users-num").innerHTML = data.clients;
+        });
       }
 
       async function getMessages() {

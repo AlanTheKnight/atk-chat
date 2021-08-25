@@ -9,6 +9,7 @@ import time
 MSG_OK = f"[ {colorama.Fore.GREEN}OK{colorama.Fore.RESET} ]"
 MSG_ERROR = f"[ {colorama.Fore.RED}ERROR{colorama.Fore.RESET} ]"
 MSG_WARN = f"[ {colorama.Fore.YELLOW}WARNING{colorama.Fore.RESET} ]"
+MSG_INFO = f"[ {colorama.Fore.CYAN}INFO{colorama.Fore.RESET} ]"
 
 
 class Server(HTTPServer):
@@ -23,7 +24,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def _html(self):
-        return open('index.html', 'r').read().encode('utf-8')
+        """HTML homepage."""
+        return open('templates/index.html', 'r').read().encode('utf-8')
+
+    def _favicon(self):
+        """Return favicon."""
+        return open('assets/favicon.ico', 'rb').read()
 
     def _set_headers_200(self):
         self.send_response(200)
@@ -39,7 +45,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         clients: dict = {}
         for i in self.server.connected_clients:
             if time.time() - self.server.connected_clients[i] > 10:
-                print(f"{MSG_WARN} Client disconnected: {i}")
+                print(f"{MSG_INFO} Client disconnected: {i}")
             else:
                 clients[i] = self.server.connected_clients[i]
         self.server.connected_clients = clients
@@ -51,7 +57,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         clients_num = self.refresh_clients()
         if self.path == "/":
             if self.client_address[0] not in self.server.connected_clients:
-                print(f"{MSG_OK} Client connected: {self.client_address[0]}")
+                print(f"{MSG_INFO} Client connected: {self.client_address[0]}")
             self.wfile.write(self._html())
         elif self.path == "/messages":
             self.wfile.write(json.dumps(
@@ -60,13 +66,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "clients": clients_num
                 }).encode())
         elif self.path == "/clear":
+            # Clear all messages
             self.server.messages = []
-            print(f"{MSG_WARN} Cleared messages")
+            print(f"{MSG_INFO} Cleared messages")
             self.wfile.write(json.dumps(self.server.messages).encode())
+        elif self.path == "/favicon.ico":
+            self.wfile.write(self._favicon())
         else:
             self.error_404()
 
     def do_POST(self):
+        """Send message."""
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         self._set_headers_200()
@@ -76,6 +86,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self._set_headers_200()
 
     def _process_message(self, msg: bytes) -> str:
+        """Return decoded message and add a timestamp."""
         message = json.loads(msg.decode('utf-8'))
         message['timestamp'] = time.strftime(
             "%H:%M:%S", time.localtime(time.time()))
@@ -86,7 +97,7 @@ def run(handler_class=RequestHandler, addr="0.0.0.0", port=8000):
     server_address = (addr, port)
     httpd = Server(server_address, handler_class)
     try:
-        with open("data.json", "r") as f:
+        with open(".data.json", "r") as f:
             httpd.messages = json.load(f)
             print(f"{MSG_OK} Read the data file")
     except FileNotFoundError:
@@ -96,7 +107,7 @@ def run(handler_class=RequestHandler, addr="0.0.0.0", port=8000):
         httpd.serve_forever()
     except KeyboardInterrupt:
         print(f"\n{MSG_ERROR} Stopped the server")
-        with open("data.json", "w") as f:
+        with open(".data.json", "w") as f:
             json.dump(httpd.messages, f)
             print(f"{MSG_OK} Saved the data file")
 
