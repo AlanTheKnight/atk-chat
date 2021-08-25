@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ATK server</title>
+    <style>
+      .field {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      input {
+        border: 2px solid black;
+        border-radius: 5px;
+        margin-top: 0.5em;
+      }
+
+      button {
+        border: 2px solid black;
+        margin-top: 1em;
+        font-size: large;
+      }
+
+      .button-wrapper {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .field:not(:first-child) {
+        margin-top: 1em;
+      }
+
+      #live-chat-wrapper {
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+        width: calc(100% - 2em);
+        margin: 2em 0.5em;
+        border: 2px solid black;
+      }
+
+      .container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+      }
+
+      .author {
+        color: #5053ff;
+      }
+
+      #live-chat {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+        height: 100%;
+        margin-bottom: 1em;
+        margin-left: 0.5em;
+        margin-right: 0.5em;
+      }
+
+      .no-msgs {
+        color: #5053ff;
+        font-size: large;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .no-msgs-wrapper {
+        text-align: center;
+      }
+
+      #connected-users {
+        margin-bottom: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <form method="post">
+        <div class="field">
+          <label for="id_name">Name</label>
+          <input id="id_name" type="text" name="name" required />
+        </div>
+        <div class="field">
+          <label for="id_text">Message</label>
+          <input
+            id="id_text"
+            type="text"
+            name="message"
+            required
+            autocomplete="off"
+          />
+        </div>
+        <div class="button-wrapper">
+          <button type="submit">Send</button>
+        </div>
+      </form>
+
+      <div class="container">
+        <div id="live-chat-wrapper">
+          <h2>Live chat</h2>
+          <div id="connected-users">
+            Connected users: <span id="users-num"></span>
+          </div>
+          <div id="live-chat"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function reload() {
+        getMessages().then((messages) => {
+          const chat = document.getElementById("live-chat");
+          chat.classList.forEach((className) => {
+            chat.classList.remove(className);
+          });
+          const msgs = document.createElement("div");
+          if (messages.length > 0) {
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const message = messages[i];
+              const msg = document.createElement("div");
+              msg.innerHTML = `[${message.timestamp}] <b class="author">${message.name}:</b> ${message.text}`;
+              msgs.appendChild(msg);
+            }
+            chat.innerHTML = "";
+            chat.appendChild(msgs);
+          } else {
+            no_msgs = document.createElement("div");
+            no_msgs.innerHTML = "No messages";
+            no_msgs.classList.add("no-msgs");
+            chat.innerHTML = "";
+            chat.classList.add("no-msgs-wrapper");
+            chat.appendChild(no_msgs);
+          }
+        });
+
+        fetch("/clients")
+          .then((data) => data.json())
+          .then((clients) => {
+            document.getElementById("users-num").innerHTML = clients;
+          });
+      }
+
+      async function getMessages() {
+        const response = await fetch("/messages");
+        const messages = await response.json();
+        return messages;
+      }
+
+      document
+        .querySelector("form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          sendMessage();
+        });
+
+      document
+        .querySelector("#id_name")
+        .addEventListener("change", function (event) {
+          event.preventDefault();
+          localStorage.setItem("chat-name", event.target.value);
+        });
+
+      function sendMessage() {
+        let name = document.getElementById("id_name").value;
+        let text = document.getElementById("id_text").value;
+        document.getElementById("id_text").value = "";
+        fetch("/", {
+          body: JSON.stringify({ name, text }),
+          method: "POST",
+        });
+      }
+
+      if (localStorage.getItem("chat-name")) {
+        document.getElementById("id_name").value =
+          localStorage.getItem("chat-name");
+      }
+      reload();
+      setInterval(reload, 1000);
+    </script>
+  </body>
+</html>
