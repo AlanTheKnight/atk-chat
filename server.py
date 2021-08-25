@@ -54,13 +54,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                 print(f"{MSG_OK} Client connected: {self.client_address[0]}")
             self.wfile.write(self._html())
         elif self.path == "/messages":
-            self.wfile.write(json.dumps(self.server.messages).encode())
+            self.wfile.write(json.dumps(
+                {
+                    "messages": self.server.messages,
+                    "clients": clients_num
+                }).encode())
         elif self.path == "/clear":
             self.server.messages = []
             print(f"{MSG_WARN} Cleared messages")
             self.wfile.write(json.dumps(self.server.messages).encode())
-        elif self.path == "/clients":
-            self.wfile.write(json.dumps(clients_num).encode())
         else:
             self.error_404()
 
